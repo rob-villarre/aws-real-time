@@ -1,10 +1,10 @@
 // https://www.serverlessguru.com/blog/terraform-create-and-deploy-aws-lambda
-// https://www.serverlessguru.com/blog/terraform-create-and-deploy-aws-lambda
 
 // s3
 resource "aws_s3_bucket" "lambda_bucket" {
   bucket = "websocket-api-lambda-bucket"
   force_destroy = true  
+  
 }
 
 resource "aws_s3_bucket_acl" "lambda_bucket_acl" {
@@ -43,11 +43,11 @@ resource "aws_lambda_function" "onconnect_lambda" {
   role = aws_iam_role.lambda_role.arn
 }
 
-# resource "aws_cloudwatch_log_group" "sg_demo" {
-#   name = "/aws/lambda/${aws_lambda_function.onconnect_lambda.function_name}"
+resource "aws_cloudwatch_log_group" "onconnect_lambda" {
+  name = "/aws/lambda/${aws_lambda_function.onconnect_lambda.function_name}"
 
-#   retention_in_days = 30
-# }
+  retention_in_days = 30
+}
 
 // iam
 data "aws_iam_policy_document" "lambda_role_policy" {
