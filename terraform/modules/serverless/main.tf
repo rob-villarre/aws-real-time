@@ -12,40 +12,6 @@ resource "aws_s3_bucket_acl" "lambda_bucket_acl" {
   acl    = "private"
 }
 
-// onconnect
-data "archive_file" "onconnect_lambda" {
-  type = "zip"
-
-  source_dir  = "${var.lambda_source_path}/onconnect"
-  output_path = "${var.lambda_source_path}/onconnect.zip"
-}
-
-resource "aws_s3_object" "onconnect_lambda" {
-  bucket = aws_s3_bucket.lambda_bucket.id
-
-  key    = "onconnect.zip"
-  source = data.archive_file.onconnect_lambda.output_path
-
-  etag = filemd5(data.archive_file.onconnect_lambda.output_path)
-}
-
-// sendmessage
-data "archive_file" "sendmessage_lambda" {
-  type = "zip"
-
-  source_dir  = "${var.lambda_source_path}/sendmessage"
-  output_path = "${var.lambda_source_path}/sendmessage.zip"
-}
-
-resource "aws_s3_object" "sendmessage_lambda" {
-  bucket = aws_s3_bucket.lambda_bucket.id
-
-  key    = "sendmessage.zip"
-  source = data.archive_file.sendmessage_lambda.output_path
-
-  etag = filemd5(data.archive_file.sendmessage_lambda.output_path)
-}
-
 // lambda
 resource "aws_lambda_function" "onconnect_lambda" {
   function_name = "onconnect"
@@ -59,10 +25,41 @@ resource "aws_lambda_function" "onconnect_lambda" {
   source_code_hash = data.archive_file.onconnect_lambda.output_base64sha256
 
   role = aws_iam_role.lambda_role.arn
+
+  environment {
+    variables = {
+      CONNECTIONS_TABLE = var.connections_table.name
+    }
+  }
 }
 
 resource "aws_cloudwatch_log_group" "onconnect_lambda" {
   name = "/aws/lambda/${aws_lambda_function.onconnect_lambda.function_name}"
+  retention_in_days = 30
+}
+
+resource "aws_lambda_function" "ondisconnect_lambda" {
+  function_name = "ondisconnect"
+
+  s3_bucket = aws_s3_bucket.lambda_bucket.id
+  s3_key = aws_s3_object.ondisconnect_lambda.key
+
+  runtime = "nodejs16.x"
+  handler = "index.handler"
+
+  source_code_hash = data.archive_file.ondisconnect_lambda.output_base64sha256
+
+  role = aws_iam_role.lambda_role.arn
+
+  environment {
+    variables = {
+      CONNECTIONS_TABLE = var.connections_table.name
+    }
+  }
+}
+
+resource "aws_cloudwatch_log_group" "ondisconnect_lambda" {
+  name = "/aws/lambda/${aws_lambda_function.ondisconnect_lambda.function_name}"
   retention_in_days = 30
 }
 
@@ -78,6 +75,12 @@ resource "aws_lambda_function" "sendmessage_lambda" {
   source_code_hash = data.archive_file.sendmessage_lambda.output_base64sha256
 
   role = aws_iam_role.lambda_role.arn
+
+  environment {
+    variables = {
+      CONNECTIONS_TABLE = var.connections_table.name
+    }
+  }
 }
 
 resource "aws_cloudwatch_log_group" "sendmessage_lambda" {
@@ -101,10 +104,26 @@ data "aws_iam_policy_document" "lambda_role_policy" {
 data "aws_iam_policy_document" "lambda_invoke_policies" {
   statement {
     effect    = "Allow"
-    actions   = [ "execute-api:ManageConnections" ]
-    resources = [ "${var.websocket_api_execution_arn}/*" ]
+    actions   = [
+      "execute-api:ManageConnections",
+      "dynamodb:GetItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:PutItem",
+      "dynamodb:Scan",
+      "dynamodb:Query",
+      "dynamodb:UpdateItem",
+      "dynamodb:BatchWriteItem",
+      "dynamodb:BatchGetItem",
+      "dynamodb:DescribeTable",
+      "dynamodb:ConditionCheckItem"
+    ]
+    resources = [ 
+      "${var.websocket_api_execution_arn}/*",
+      "${var.connections_table.arn}"
+    ]
   }
 }
+
 
 resource "aws_iam_role" "lambda_role" {
   name = "basic-lambda-role"

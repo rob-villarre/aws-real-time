@@ -32,10 +32,33 @@ resource "aws_lambda_permission" "websocket_api_connect" {
   source_arn = "${aws_apigatewayv2_api.websocket_api.execution_arn}/*/*"
 }
 
-# resource "aws_apigatewayv2_route" "websocket_api_disconnect" {
-#   api_id = aws_apigatewayv2_api.websocket_api.id
-#   route_key = "$disconnect"
-# }
+resource "aws_apigatewayv2_route" "websocket_api_disconnect" {
+  api_id = aws_apigatewayv2_api.websocket_api.id
+  route_key = "$disconnect"
+
+  target = "integrations/${aws_apigatewayv2_integration.websocket_api_disconnect.id}"
+}
+
+resource "aws_apigatewayv2_integration" "websocket_api_disconnect" {
+  api_id = aws_apigatewayv2_api.websocket_api.id
+  integration_type = "AWS_PROXY"
+  integration_uri = var.ondisconnect_lambda.invoke_arn
+  
+  integration_method = "POST"
+  connection_type = "INTERNET"
+  content_handling_strategy = "CONVERT_TO_TEXT"
+  passthrough_behavior = "WHEN_NO_MATCH"
+
+}
+
+resource "aws_lambda_permission" "websocket_api_disconnect" {
+  statement_id  = "AllowExecutionFromAPIGateway"
+  action        = "lambda:InvokeFunction"
+  principal     = "apigateway.amazonaws.com"
+  function_name = var.ondisconnect_lambda.function_name
+
+  source_arn = "${aws_apigatewayv2_api.websocket_api.execution_arn}/*/*"
+}
 
 # resource "aws_apigatewayv2_route" "websocket_api_default" {
 #   api_id = aws_apigatewayv2_api.websocket_api.id
