@@ -3,3 +3,7 @@ variable "lambda_source_path" {
   default = "../lambda"
   description = "directory path to lambda source code"
 }
+
+variable "websocket_api_execution_arn" {
+  type = string
+}
