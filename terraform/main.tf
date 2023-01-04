@@ -3,6 +3,7 @@ module "network" {
 
   onconnect_lambda = module.serverless.onconnect_lambda
   ondisconnect_lambda = module.serverless.ondisconnect_lambda
+  joinroom_lambda = module.serverless.joinroom_lambda
   sendmessage_lambda = module.serverless.sendmessage_lambda
 }
 
